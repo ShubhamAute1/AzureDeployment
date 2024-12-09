@@ -1,40 +1,44 @@
 import numpy as np
-from flask import Flask, request, jsonify, render_template, url_for
+from flask import Flask, request, jsonify, render_template
 import pickle
 
-
 app = Flask(__name__)
-model = pickle.load(open('randomForestRegressor.pkl','rb'))
-
+# Load the trained model
+with open('randomForestRegressor.pkl', 'rb') as model_file:
+    model = pickle.load(model_file)
 
 @app.route('/')
 def home():
-    #return 'Hello World'
+    """
+    Render the home page.
+    """
     return render_template('home.html')
-    #return render_template('index.html')
 
-@app.route('/predict',methods = ['POST'])
+@app.route('/predict', methods=['POST'])
 def predict():
-    int_features = [float(x) for x in request.form.values()]
-    final_features = [np.array(int_features)]
-    prediction = model.predict(final_features)
-    print(prediction[0])
+    """
+    Handle predictions based on user input from a form.
+    """
+    try:
+        int_features = [float(x) for x in request.form.values()]
+        final_features = [np.array(int_features)]
+        prediction = model.predict(final_features)
+        return render_template('home.html', prediction_text=f"AQI for Jaipur: {prediction[0]:.2f}")
+    except Exception as e:
+        return render_template('home.html', prediction_text=f"Error: {str(e)}")
 
-    #output = round(prediction[0], 2)
-    return render_template('home.html', prediction_text="AQI for Jaipur {}".format(prediction[0]))
-
-@app.route('/predict_api',methods=['POST'])
+@app.route('/predict_api', methods=['POST'])
 def predict_api():
-    '''
-    For direct API calls trought request
-    '''
-    data = request.get_json(force=True)
-    prediction = model.predict([np.array(list(data.values()))])
-
-    output = prediction[0]
-    return jsonify(output)
-
-
+    """
+    Handle API predictions through JSON requests.
+    """
+    try:
+        data = request.get_json(force=True)
+        features = np.array(list(data.values()))
+        prediction = model.predict([features])
+        return jsonify(prediction[0])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
